@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'screens/absence_list.dart';
 import 'screens/home.dart';
 
 void main() {
@@ -16,7 +17,10 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      routes: {'/': (context) => const MyHomePage(title: '')},
+      routes: {
+        '/': (context) => const MyHomePage(title: ''),
+        '/absences': (context) => AbsenceList(),
+      },
     );
   }
 }

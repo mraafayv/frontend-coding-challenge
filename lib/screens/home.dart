@@ -1,4 +1,5 @@
 
+import 'package:absence_manager/screens/absence_list.dart';
 import 'package:flutter/material.dart';
 
 class MyHomePage extends StatefulWidget {
@@ -35,7 +36,10 @@ class _MyHomePageState extends State<MyHomePage> {
             const SizedBox(height: 20),
             TextButton(
               onPressed: () {
-                // Add your "Get Started" button logic here
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AbsenceList()),
+                );
               },
               style: TextButton.styleFrom(
                 padding: const EdgeInsets.symmetric(

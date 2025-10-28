@@ -90,24 +90,52 @@ class _AbsenceListState extends State<AbsenceList> {
                   child: ListView.builder(
                     itemCount: _currentPageItems.length,
                     itemBuilder: (context, index) {
-                      final absence = _currentPageItems[index];
-                      final memberName =
-                          memberNames[absence['userId']] ?? 'Unknown';
+                    final absence = _currentPageItems[index];
+                    final memberName =
+                      memberNames[absence['userId']] ?? 'Unknown';
 
-                      return ListTile(
-                        title: Text(memberName),
-                        subtitle: Text(
-                          '${absence['type']?.toUpperCase() ?? 'Unknown'} - ${absence['startDate']} to ${absence['endDate']}',
+                    return Card(
+                    margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                      Text(
+                      memberName,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8.0),
+                      Text('Type: ${absence['type']?.toUpperCase() ?? 'Unknown'}'),
+                      const SizedBox(height: 8.0),
+                      Text('Period: ${absence['startDate']} to ${absence['endDate']}'),
+                      const SizedBox(height: 8.0),
+                      if (absence['memberNote'] != null && absence['memberNote'].isNotEmpty)
+                        Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Member Note: ${absence['memberNote']}'),
+                          const SizedBox(height: 8.0),
+                        ],
                         ),
-                        trailing: Text(
-                          absence['confirmedAt'] != null
-                              ? 'Approved'
-                              : 'Pending',
+                      if (absence['admitterNote'] != null && absence['admitterNote'].isNotEmpty)
+                        Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Admitter Note: ${absence['admitterNote']}'),
+                          const SizedBox(height: 8.0),
+                        ],
                         ),
-                      );
+                      Text(
+                        'Status: ${absence['confirmedAt'] != null ? 'Confirmed' : absence['rejectedAt'] != null ? 'Rejected' : 'Requested'}',
+                      ),
+                      ],
+                      ),
+                    ),
+                    );
                     },
+                    ),
                   ),
-                ),
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Row(

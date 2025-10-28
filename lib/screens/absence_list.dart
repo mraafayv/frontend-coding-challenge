@@ -13,7 +13,7 @@ class _AbsenceListState extends State<AbsenceList> {
   Map<int, String> memberNames = {};
   bool isLoading = true;
   String? errorMessage;
-  
+
   // Add pagination variables
   int currentPage = 1;
   final int itemsPerPage = 10;
@@ -29,13 +29,13 @@ class _AbsenceListState extends State<AbsenceList> {
       // Load both absences and members
       final absencesData = await absences();
       final membersData = await members();
-      
+
       // Create a map of userId to member name
       Map<int, String> nameMap = {};
       for (var member in membersData) {
         nameMap[member['userId']] = member['name'];
       }
-      
+
       setState(() {
         absencesList = absencesData;
         memberNames = nameMap;
@@ -70,53 +70,67 @@ class _AbsenceListState extends State<AbsenceList> {
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : errorMessage != null
-              ? Center(child: Text(errorMessage!))
-              : absencesList.isEmpty
-                  ? const Center(child: Text('No absences found'))
-                  : Column(
-                      children: [
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: _currentPageItems.length,
-                            itemBuilder: (context, index) {
-                              final absence = _currentPageItems[index];
-                              final memberName = memberNames[absence['userId']] ?? 'Unknown';
-                              
-                              return ListTile(
-                                title: Text(memberName),
-                                subtitle: Text(
-                                  '${absence['type']?.toUpperCase() ?? 'Unknown'} - ${absence['startDate']} to ${absence['endDate']}',
-                                ),
-                                trailing: Text(
-                                  absence['confirmedAt'] != null ? 'Approved' : 'Pending',     
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.chevron_left),
-                                onPressed: currentPage > 1
-                                    ? () => setState(() => currentPage--)
-                                    : null,
-                              ),
-                              Text('Page $currentPage of $_totalPages'),
-                              IconButton(
-                                icon: const Icon(Icons.chevron_right),
-                                onPressed: currentPage < _totalPages
-                                    ? () => setState(() => currentPage++)
-                                    : null,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+          ? Center(child: Text(errorMessage!))
+          : absencesList.isEmpty
+          ? const Center(child: Text('No absences found'))
+          : Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16.0),
+                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                  child: Text(
+                    'Total Absences: ${absencesList.length}',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _currentPageItems.length,
+                    itemBuilder: (context, index) {
+                      final absence = _currentPageItems[index];
+                      final memberName =
+                          memberNames[absence['userId']] ?? 'Unknown';
+
+                      return ListTile(
+                        title: Text(memberName),
+                        subtitle: Text(
+                          '${absence['type']?.toUpperCase() ?? 'Unknown'} - ${absence['startDate']} to ${absence['endDate']}',
+                        ),
+                        trailing: Text(
+                          absence['confirmedAt'] != null
+                              ? 'Approved'
+                              : 'Pending',
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left),
+                        onPressed: currentPage > 1
+                            ? () => setState(() => currentPage--)
+                            : null,
+                      ),
+                      Text('Page $currentPage of $_totalPages'),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right),
+                        onPressed: currentPage < _totalPages
+                            ? () => setState(() => currentPage++)
+                            : null,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }

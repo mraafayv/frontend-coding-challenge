@@ -103,7 +103,7 @@ class _AbsenceListState extends State<AbsenceList> {
                       children: [
                       Text(
                       memberName,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
                       ),
                       const SizedBox(height: 8.0),
                       Text('Type: ${absence['type']?.toUpperCase() ?? 'Unknown'}'),
@@ -126,8 +126,23 @@ class _AbsenceListState extends State<AbsenceList> {
                           const SizedBox(height: 8.0),
                         ],
                         ),
-                      Text(
-                        'Status: ${absence['confirmedAt'] != null ? 'Confirmed' : absence['rejectedAt'] != null ? 'Rejected' : 'Requested'}',
+                      Row(
+                        children: [
+                          const Text(
+                            'Status: ',
+                          ),
+                          Text(
+                            absence['confirmedAt'] != null ? 'Confirmed' : absence['rejectedAt'] != null ? 'Rejected' : 'Requested',
+                            style: TextStyle(
+                              color: absence['confirmedAt'] != null
+                                  ? Colors.green
+                                  : absence['rejectedAt'] != null
+                                      ? Colors.red
+                                      : Colors.blue,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                       ],
                       ),

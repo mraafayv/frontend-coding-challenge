@@ -90,67 +90,85 @@ class _AbsenceListState extends State<AbsenceList> {
                   child: ListView.builder(
                     itemCount: _currentPageItems.length,
                     itemBuilder: (context, index) {
-                    final absence = _currentPageItems[index];
-                    final memberName =
-                      memberNames[absence['userId']] ?? 'Unknown';
+                      final absence = _currentPageItems[index];
+                      final memberName =
+                          memberNames[absence['userId']] ?? 'Unknown';
 
-                    return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                      Text(
-                      memberName,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
-                      ),
-                      const SizedBox(height: 8.0),
-                      Text('Type: ${absence['type']?.toUpperCase() ?? 'Unknown'}'),
-                      const SizedBox(height: 8.0),
-                      Text('Period: ${absence['startDate']} to ${absence['endDate']}'),
-                      const SizedBox(height: 8.0),
-                      if (absence['memberNote'] != null && absence['memberNote'].isNotEmpty)
-                        Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Member Note: ${absence['memberNote']}'),
-                          const SizedBox(height: 8.0),
-                        ],
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16.0,
+                          vertical: 8.0,
                         ),
-                      if (absence['admitterNote'] != null && absence['admitterNote'].isNotEmpty)
-                        Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Admitter Note: ${absence['admitterNote']}'),
-                          const SizedBox(height: 8.0),
-                        ],
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                memberName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16.0,
+                                ),
+                              ),
+                              const SizedBox(height: 8.0),
+                              Text(
+                                'Type: ${absence['type']?.toUpperCase() ?? 'Unknown'}',
+                              ),
+                              const SizedBox(height: 8.0),
+                              Text(
+                                'Period: ${absence['startDate']} to ${absence['endDate']}',
+                              ),
+                              const SizedBox(height: 8.0),
+                              if (absence['memberNote'] != null &&
+                                  absence['memberNote'].isNotEmpty)
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Member Note: ${absence['memberNote']}',
+                                    ),
+                                    const SizedBox(height: 8.0),
+                                  ],
+                                ),
+                              if (absence['admitterNote'] != null &&
+                                  absence['admitterNote'].isNotEmpty)
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Admitter Note: ${absence['admitterNote']}',
+                                    ),
+                                    const SizedBox(height: 8.0),
+                                  ],
+                                ),
+                              Row(
+                                children: [
+                                  const Text('Status: '),
+                                  Text(
+                                    absence['confirmedAt'] != null
+                                        ? 'Confirmed'
+                                        : absence['rejectedAt'] != null
+                                        ? 'Rejected'
+                                        : 'Requested',
+                                    style: TextStyle(
+                                      color: absence['confirmedAt'] != null
+                                          ? Colors.green
+                                          : absence['rejectedAt'] != null
+                                          ? Colors.red
+                                          : Colors.blue,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      Row(
-                        children: [
-                          const Text(
-                            'Status: ',
-                          ),
-                          Text(
-                            absence['confirmedAt'] != null ? 'Confirmed' : absence['rejectedAt'] != null ? 'Rejected' : 'Requested',
-                            style: TextStyle(
-                              color: absence['confirmedAt'] != null
-                                  ? Colors.green
-                                  : absence['rejectedAt'] != null
-                                      ? Colors.red
-                                      : Colors.blue,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      ],
-                      ),
-                    ),
-                    );
+                      );
                     },
-                    ),
                   ),
+                ),
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Row(

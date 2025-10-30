@@ -5,18 +5,31 @@ class AbsenceList extends StatefulWidget {
   const AbsenceList({super.key});
 
   @override
-  _AbsenceListState createState() => _AbsenceListState();
+  State<AbsenceList> createState() => _AbsenceListState();
 }
 
 class _AbsenceListState extends State<AbsenceList> {
+  // Data
   List<dynamic> absencesList = [];
   Map<int, String> memberNames = {};
+
+  // UI State
   bool isLoading = true;
   String? errorMessage;
 
-  // Add pagination variables
+  // Pagination
   int currentPage = 1;
-  final int itemsPerPage = 10;
+  static const int itemsPerPage = 10;
+
+  // Active Filters
+  String? selectedType;
+  DateTime? selectedStartDate;
+  DateTime? selectedEndDate;
+
+  // Temporary Filters (for modal)
+  String? tempSelectedType;
+  DateTime? tempStartDate;
+  DateTime? tempEndDate;
 
   @override
   void initState() {
@@ -26,12 +39,10 @@ class _AbsenceListState extends State<AbsenceList> {
 
   Future<void> _loadData() async {
     try {
-      // Load both absences and members
       final absencesData = await absences();
       final membersData = await members();
 
-      // Create a map of userId to member name
-      Map<int, String> nameMap = {};
+      final nameMap = <int, String>{};
       for (var member in membersData) {
         nameMap[member['userId']] = member['name'];
       }
@@ -49,149 +60,403 @@ class _AbsenceListState extends State<AbsenceList> {
     }
   }
 
-  // Add method to get current page items
+  // Getters
+  List<dynamic> get _filteredAbsences {
+    return absencesList.where((absence) {
+      // Filter by type
+      if (selectedType != null &&
+          absence['type']?.toLowerCase() != selectedType?.toLowerCase()) {
+        return false;
+      }
+
+      // Filter by date range
+      if (selectedStartDate != null || selectedEndDate != null) {
+        final startDate = DateTime.tryParse(absence['startDate'] ?? '');
+        final endDate = DateTime.tryParse(absence['endDate'] ?? '');
+
+        if (startDate != null && endDate != null) {
+          return _isAbsenceInDateRange(startDate, endDate);
+        }
+      }
+
+      return true;
+    }).toList();
+  }
+
   List<dynamic> get _currentPageItems {
     final startIndex = (currentPage - 1) * itemsPerPage;
     final endIndex = startIndex + itemsPerPage;
-    if (startIndex >= absencesList.length) return [];
-    return absencesList.sublist(
+
+    if (startIndex >= _filteredAbsences.length) return [];
+
+    return _filteredAbsences.sublist(
       startIndex,
-      endIndex > absencesList.length ? absencesList.length : endIndex,
+      endIndex > _filteredAbsences.length ? _filteredAbsences.length : endIndex,
     );
   }
 
-  // Add method to calculate total pages
-  int get _totalPages => (absencesList.length / itemsPerPage).ceil();
+  int get _totalPages =>
+      (_filteredAbsences.length / itemsPerPage).ceil().toInt();
 
+  List<String> get _uniqueTypes {
+    return absencesList
+        .map((absence) => absence['type'] as String?)
+        .where((type) => type != null)
+        .cast<String>()
+        .toSet()
+        .toList();
+  }
+
+  // Helper Methods
+  bool _isAbsenceInDateRange(DateTime startDate, DateTime endDate) {
+    if (selectedStartDate != null && selectedEndDate != null) {
+      return !(endDate.isBefore(selectedStartDate!) ||
+          startDate.isAfter(selectedEndDate!));
+    } else if (selectedStartDate != null) {
+      return !endDate.isBefore(selectedStartDate!);
+    } else if (selectedEndDate != null) {
+      return !startDate.isAfter(selectedEndDate!);
+    }
+    return true;
+  }
+
+  String _getAbsenceStatus(dynamic absence) {
+    if (absence['confirmedAt'] != null) return 'Confirmed';
+    if (absence['rejectedAt'] != null) return 'Rejected';
+    return 'Requested';
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Confirmed':
+        return Colors.green;
+      case 'Rejected':
+        return Colors.red;
+      default:
+        return Colors.blue;
+    }
+  }
+
+  void _showFilterModal() {
+    tempSelectedType = selectedType;
+    tempStartDate = selectedStartDate;
+    tempEndDate = selectedEndDate;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => _buildFilterModal(),
+    );
+  }
+
+  void _applyFilters() {
+    setState(() {
+      selectedType = tempSelectedType;
+      selectedStartDate = tempStartDate;
+      selectedEndDate = tempEndDate;
+      currentPage = 1;
+    });
+    Navigator.pop(context);
+  }
+
+  void _clearFilters() {
+    setState(() {
+      selectedType = null;
+      selectedStartDate = null;
+      selectedEndDate = null;
+      tempSelectedType = null;
+      tempStartDate = null;
+      tempEndDate = null;
+      currentPage = 1;
+    });
+    Navigator.pop(context);
+  }
+
+  // Build Methods
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Absences List')),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : errorMessage != null
-          ? Center(child: Text(errorMessage!))
-          : absencesList.isEmpty
-          ? const Center(child: Text('No absences found'))
-          : Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16.0),
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
-                  child: Text(
-                    'Total Absences: ${absencesList.length}',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: _currentPageItems.length,
-                    itemBuilder: (context, index) {
-                      final absence = _currentPageItems[index];
-                      final memberName =
-                          memberNames[absence['userId']] ?? 'Unknown';
+      body: _buildBody(),
+    );
+  }
 
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16.0,
-                          vertical: 8.0,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                memberName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16.0,
-                                ),
-                              ),
-                              const SizedBox(height: 8.0),
-                              Text(
-                                'Type: ${absence['type']?.toUpperCase() ?? 'Unknown'}',
-                              ),
-                              const SizedBox(height: 8.0),
-                              Text(
-                                'Period: ${absence['startDate']} to ${absence['endDate']}',
-                              ),
-                              const SizedBox(height: 8.0),
-                              if (absence['memberNote'] != null &&
-                                  absence['memberNote'].isNotEmpty)
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Member Note: ${absence['memberNote']}',
-                                    ),
-                                    const SizedBox(height: 8.0),
-                                  ],
-                                ),
-                              if (absence['admitterNote'] != null &&
-                                  absence['admitterNote'].isNotEmpty)
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Admitter Note: ${absence['admitterNote']}',
-                                    ),
-                                    const SizedBox(height: 8.0),
-                                  ],
-                                ),
-                              Row(
-                                children: [
-                                  const Text('Status: '),
-                                  Text(
-                                    absence['confirmedAt'] != null
-                                        ? 'Confirmed'
-                                        : absence['rejectedAt'] != null
-                                        ? 'Rejected'
-                                        : 'Requested',
-                                    style: TextStyle(
-                                      color: absence['confirmedAt'] != null
-                                          ? Colors.green
-                                          : absence['rejectedAt'] != null
-                                          ? Colors.red
-                                          : Colors.blue,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.chevron_left),
-                        onPressed: currentPage > 1
-                            ? () => setState(() => currentPage--)
-                            : null,
-                      ),
-                      Text('Page $currentPage of $_totalPages'),
-                      IconButton(
-                        icon: const Icon(Icons.chevron_right),
-                        onPressed: currentPage < _totalPages
-                            ? () => setState(() => currentPage++)
-                            : null,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+  Widget _buildBody() {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (errorMessage != null) {
+      return Center(child: Text(errorMessage!));
+    }
+
+    if (absencesList.isEmpty) {
+      return const Center(child: Text('No absences found'));
+    }
+
+    return Column(
+      children: [
+        _buildFilterButton(),
+        _buildTotalAbsencesContainer(),
+        _buildAbsencesList(),
+        _buildPaginationControls(),
+      ],
+    );
+  }
+
+  Widget _buildFilterButton() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: ElevatedButton.icon(
+        icon: const Icon(Icons.filter_list),
+        label: const Text('Filter'),
+        onPressed: _showFilterModal,
+      ),
+    );
+  }
+
+  Widget _buildTotalAbsencesContainer() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16.0),
+      color: Theme.of(context).primaryColor.withOpacity(0.1),
+      child: Text(
+        'Total Absences: ${_filteredAbsences.length}',
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
             ),
+      ),
+    );
+  }
+
+  Widget _buildAbsencesList() {
+    return Expanded(
+      child: ListView.builder(
+        itemCount: _currentPageItems.length,
+        itemBuilder: (context, index) {
+          final absence = _currentPageItems[index];
+          return _buildAbsenceCard(absence);
+        },
+      ),
+    );
+  }
+
+  Widget _buildAbsenceCard(dynamic absence) {
+    final memberName = memberNames[absence['userId']] ?? 'Unknown';
+    final status = _getAbsenceStatus(absence);
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildAbsenceHeader(memberName),
+            const SizedBox(height: 8.0),
+            _buildAbsenceType(absence),
+            const SizedBox(height: 8.0),
+            _buildAbsencePeriod(absence),
+            if (absence['memberNote'] != null &&
+                absence['memberNote'].isNotEmpty) ...[
+              const SizedBox(height: 8.0),
+              _buildNote('Member Note', absence['memberNote']),
+            ],
+            if (absence['admitterNote'] != null &&
+                absence['admitterNote'].isNotEmpty) ...[
+              const SizedBox(height: 8.0),
+              _buildNote('Admitter Note', absence['admitterNote']),
+            ],
+            const SizedBox(height: 8.0),
+            _buildStatusRow(status),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAbsenceHeader(String memberName) {
+    return Text(
+      memberName,
+      style: const TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: 16.0,
+      ),
+    );
+  }
+
+  Widget _buildAbsenceType(dynamic absence) {
+    return Text('Type: ${absence['type']?.toUpperCase() ?? 'Unknown'}');
+  }
+
+  Widget _buildAbsencePeriod(dynamic absence) {
+    return Text(
+      'Period: ${absence['startDate']} to ${absence['endDate']}',
+    );
+  }
+
+  Widget _buildNote(String label, String note) {
+    return Text('$label: $note');
+  }
+
+  Widget _buildStatusRow(String status) {
+    return Row(
+      children: [
+        const Text('Status: '),
+        Text(
+          status,
+          style: TextStyle(
+            color: _getStatusColor(status),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPaginationControls() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: currentPage > 1 ? () => setState(() => currentPage--) : null,
+          ),
+          Text('Page $currentPage of $_totalPages'),
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            onPressed:
+                currentPage < _totalPages ? () => setState(() => currentPage++) : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterModal() {
+    return StatefulBuilder(
+      builder: (context, setModalState) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Filters',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16.0),
+              _buildTypeFilter(setModalState),
+              const SizedBox(height: 16.0),
+              _buildDateRangeFilter(setModalState),
+              const SizedBox(height: 24.0),
+              _buildFilterModalButtons(),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTypeFilter(StateSetter setModalState) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Type:'),
+        DropdownButton<String>(
+          isExpanded: true,
+          hint: const Text('Select Type'),
+          value: tempSelectedType,
+          items: _uniqueTypes.map((type) {
+            return DropdownMenuItem(value: type, child: Text(type));
+          }).toList(),
+          onChanged: (value) {
+            setModalState(() => tempSelectedType = value);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateRangeFilter(StateSetter setModalState) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Date Range:'),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.calendar_today),
+                label: Text(
+                  tempStartDate == null
+                      ? 'Start Date'
+                      : tempStartDate.toString().split(' ')[0],
+                ),
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: tempStartDate ?? DateTime.now(),
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (picked != null) {
+                    setModalState(() => tempStartDate = picked);
+                  }
+                },
+              ),
+            ),
+            const SizedBox(width: 8.0),
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.calendar_today),
+                label: Text(
+                  tempEndDate == null
+                      ? 'End Date'
+                      : tempEndDate.toString().split(' ')[0],
+                ),
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: tempEndDate ?? DateTime.now(),
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (picked != null) {
+                    setModalState(() => tempEndDate = picked);
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterModalButtons() {
+    final hasActiveFilters =
+        selectedType != null || selectedStartDate != null || selectedEndDate != null;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _applyFilters,
+          child: const Text('Apply'),
+        ),
+        if (hasActiveFilters)
+          ElevatedButton(
+            onPressed: _clearFilters,
+            child: const Text('Clear'),
+          ),
+      ],
     );
   }
 }

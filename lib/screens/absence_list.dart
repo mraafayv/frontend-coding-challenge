@@ -38,6 +38,11 @@ class _AbsenceListState extends State<AbsenceList> {
   }
 
   Future<void> _loadData() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
     try {
       final absencesData = await absences();
       final membersData = await members();
@@ -168,7 +173,7 @@ class _AbsenceListState extends State<AbsenceList> {
       tempEndDate = null;
       currentPage = 1;
     });
-    Navigator.pop(context);
+    // Navigator.pop(context);
   }
 
   // Build Methods
@@ -182,15 +187,15 @@ class _AbsenceListState extends State<AbsenceList> {
 
   Widget _buildBody() {
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return _buildLoadingState();
     }
 
     if (errorMessage != null) {
-      return Center(child: Text(errorMessage!));
+      return _buildErrorState();
     }
 
-    if (absencesList.isEmpty) {
-      return const Center(child: Text('No absences found'));
+    if (_filteredAbsences.isEmpty) {
+      return _buildEmptyState();
     }
 
     return Column(
@@ -200,6 +205,92 @@ class _AbsenceListState extends State<AbsenceList> {
         _buildAbsencesList(),
         _buildPaginationControls(),
       ],
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16.0),
+          Text(
+            'Loading absences...',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 48.0, color: Colors.red),
+          const SizedBox(height: 16.0),
+          Text(
+            errorMessage!,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 16.0),
+          ElevatedButton(
+            onPressed: _loadData,
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.inbox_outlined,
+            size: 64.0,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16.0),
+          Text(
+            'No Absences Found',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8.0),
+          Text(
+            'There are no absences matching your filters.\nTry adjusting your search criteria.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.grey[500],
+            ),
+          ),
+          const SizedBox(height: 24.0),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton.icon(
+                icon: const Icon(Icons.filter_list),
+                label: const Text('Adjust Filters'),
+                onPressed: _showFilterModal,
+              ),
+              const SizedBox(width: 12.0),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.clear),
+                label: const Text('Reset Filters'),
+                onPressed: _clearFilters,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
